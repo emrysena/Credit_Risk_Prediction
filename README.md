@@ -1,11 +1,5 @@
 # Credit Default Classification
 
-**Author:** Sena Çiftçi  
-**Date:** December 30, 2025  
-**Language:** R
-
----
-
 ## Overview
 
 This project applies supervised classification methods to predict loan default risk using a real-world credit dataset. The analysis covers exploratory data analysis (EDA), linear probability modeling, logistic regression, and decision tree classification.
@@ -14,7 +8,6 @@ This project applies supervised classification methods to predict loan default r
 
 ## Dataset
 
-- **Source file:** `credit.csv`
 - **Full dataset size:** 28,630 observations × 12 variables
 - **Working subset:** 7,500 randomly sampled rows with 8 selected columns (seed: `338011`)
 
@@ -38,17 +31,6 @@ This project applies supervised classification methods to predict loan default r
 **Class distribution (full dataset):**  
 - Non-default (0): 22,427 (78.3%)  
 - Default (1): 6,203 (21.7%)
-
----
-
-## Project Structure
-
-```
-.
-├── credit.csv                    # Raw dataset (required to run)
-├── HW_Credit_Sena_Ciftci.html    # Full rendered R Markdown report
-└── README.md
-```
 
 ---
 
@@ -96,16 +78,3 @@ library(cvms)
 library(tibble)
 ```
 
-Install missing packages with:
-
-```r
-install.packages(c("tidyverse", "GGally", "rpart", "rpart.plot", "cvms", "tibble"))
-```
-
----
-
-## How to Run
-
-1. Place `credit.csv` in your working directory.
-2. Open the R Markdown source (or adapt the HTML report) in RStudio.
-3. Run all chunks sequentially — the random seed (`set.seed(338011)`) ensures reproducibility of the subsample.
