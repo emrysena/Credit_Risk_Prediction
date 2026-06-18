@@ -1,0 +1,303 @@
+---
+title: "HW-Classification"
+author: "Sena Çiftçi"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, 
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+## Credit Data 
+
+This assignment is related with Credit Data. As the first step, the provided dataset must be imported to R.  
+
+```{r import}
+# libraries to be used 
+library(tidyverse)
+library(GGally)
+library(rpart)
+library(rpart.plot)
+library(cvms)
+library(tibble)
+
+# import the data set
+credit <- read_csv(file="credit.csv")
+
+# convert to data frame 
+credit <- as.data.frame(credit)
+
+dim(credit)
+colnames(credit)
+str(credit)
+
+```
+
+
+## Variables  
+
+person_age: Age    
+person_income: Annual Income    
+person_home_ownership: Home ownership    
+person_emp_length: Employment length (in years)     
+loan_intent: Loan intent    
+loan_grade: Loan grade    
+loan_amnt: Loan amount    
+loan_int_rate: Interest rate    
+loan_status: Loan status (0 is non default 1 is default)    
+loan_percent_income: Percent income    
+default_before: Historical default     
+cred_hist_length: Credit history length     
+
+
+## First Look: Summary and Glimpse
+
+A first look: 
+
+- How many observations?  
+
+- How many NAs?
+
+- Categorical Variable Names?  
+
+- Tables for Categorical Variables?  
+
+
+
+```{r}
+
+summary(credit)
+glimpse(credit)
+
+# How many observations?
+
+nrow(credit)
+
+# How many NAs?
+
+colSums(is.na(credit))
+
+# Numeric variables
+credit |> 
+  select_if(is.numeric) |> # select only numeric columns
+  colnames()  # names 
+
+# Character variables
+credit |> 
+  select_if(is.character) |> # select only character columns
+  colnames() #names
+
+# Analyze the class imbalance of the loan_status variable
+
+table(credit$loan_status)
+
+# Meaning the 22427 of the borrowers have successfully repaid the loan (low risk) and the 6203 of the borrowers have not successfully repaid the loan (high risk)
+
+# table of home_ownership
+
+table(credit$home_ownership)
+
+# more tables
+table(credit$loan_intent)
+table(credit$loan_int_rate)
+
+```
+
+## Obtaining Subset of Data 
+
+For this assignment we first obtain the subset of the dataset before EDA and modelling   
+
+
+```{r}
+
+set.seed(338011) # last 6 digits of my student id
+cr_r <- sample(1:nrow(credit), size = 7500) # rows
+cr_c <- c(9, 1:3, 7, 10 ,sample(c(4:6,8,11,12),2)) # columns 
+
+credit_data <- credit[cr_r,cr_c] # sub-sample of data
+
+credit_data |>
+  select_if(is.numeric)
+  ggpairs(credit_data)
+
+glimpse(credit_data)
+
+```
+
+## Some Tables 
+
+```{r}
+credit_data |> 
+  group_by(loan_status) |> 
+  summarise(m_age = mean(age, na.rm=T),
+            m_income = mean(income, na.rm=T),
+            m_amount = mean(loan_amnt, na.rm=T),
+            m_perc_income = mean(loan_percent_income, na.rm=T)
+  )
+
+table(credit_data$loan_status) # shows whether borrowers repaid successfully or not
+summary(credit_data)
+
+
+
+table(credit_data$home_ownership) # status for home ownership
+table(credit_data$loan_intent)
+table(credit_data$loan_grade) # statuses and numbers for loan grades
+
+
+credit_data |>
+  group_by(loan_status) |>
+  count(home_ownership) # status of home ownership categorized by whether or not the borrowers repaid successfully or not
+
+# Findings: Most borrowers have successfully repaid the loan
+# While, in other statuses, the rate of borrowers who repaid the loan is about the double the size of borrowers who have not repaid successfully. But in 'mortgage' it is over 6 times and in  'own' it is over 13 times
+
+```
+
+
+
+## Let's Create [Some] Plot[s]   
+
+
+```{r}
+credit_data |> 
+  ggplot(aes(loan_percent_income, loan_amnt)) + 
+  geom_point(color="blue") + 
+  facet_wrap(~ loan_status, 
+             labeller = as_labeller(c("0" = "Not Default", "1"="Default"))) + 
+  labs(
+    title = "Loan Percent Income vs Loan Amount", 
+    x = "Loan Percent Income", 
+    y = "Loan Amount"
+     ) + 
+  theme_bw()
+
+credit_data |>
+  select_if(is.numeric) |>
+  ggpairs()
+
+# own trials (box plot of the sample)
+
+credit_data |> 
+  ggplot(aes(loan_percent_income, loan_amnt)) + 
+  geom_boxplot() + 
+  facet_wrap(~ loan_status, 
+             labeller = as_labeller(c("0" = "Not Default", "1"="Default"))) + 
+  labs(
+    title = "Loan Percent Income vs Loan Amount",
+    x = "Loan Percent Income", 
+    y = "Loan Amount"
+  ) + 
+  theme_bw()
+
+# add more as you need
+
+credit_data |> 
+  ggplot(aes(x = factor(loan_status), y = income)) +
+  geom_point() +
+  labs(
+    x = "Loan Status",
+    y = "Income"
+  ) +
+  theme_bw()
+
+#box plot
+
+credit_data |> 
+  ggplot(aes(x = factor(loan_status), y = income)) +
+  geom_boxplot() +
+  labs(
+    x = "Loan Status",
+    y = "Income"
+  ) +
+  theme_bw()
+
+```
+
+
+## Linear Probability Model      
+
+- First Linear Model: 
+
+    + Dependent Var: loan_status
+    + Independent Vars: Start with all predictors
+
+Give a brief summary of linear model, What you see from the summary table (interpret estimations, coefficient significance etc)   
+
+```{r}
+
+lm_1 <- lm(loan_status ~ loan_percent_income + cred_hist_length
+           + loan_amnt + age + income + home_ownership
+           + loan_grade, data=credit_data)  
+
+summary(lm_1)
+```
+
+
+- Create 2 more models containing variable transformation. Get the summary tables, interpret them  
+
+- Select the best model among them, explain your reasoning   
+
+```{r}
+
+lm_2 <- lm(loan_status ~ log(income), data=credit_data)
+
+names(lm_2)
+summary(lm_2)
+
+
+lm_3 <- lm(loan_status ~ income + I(income^2) + loan_amnt 
+           + home_ownership, data=credit_data)  
+
+names(lm_3)
+summary(lm_3)
+
+```
+
+
+## Logistic Regression   
+
+- First Logistic Model: 
+
+    + Dependent Var: loan_status
+    + Independent Vars: Start with all predictors   
+
+Give a brief summary of linear model, What you see from the summary table (interpret estimations, coefficient significance etc)   
+
+```{r}
+# estimate a Logit regression with multiple regressors
+logit_1 <- glm(loan_status ~ loan_percent_income + cred_hist_length
+           + loan_amnt + age + income + home_ownership
+           + loan_grade, 
+                  family = binomial(link = "logit"), 
+                  data = credit_data)
+
+summary(logit_1)
+
+```
+
+## Decision Tree  
+
+```{r}
+tree_model <- rpart(
+  loan_status ~ loan_percent_income + cred_hist_length
+           + loan_amnt + age + income + home_ownership
+           + loan_grade, 
+  data = credit_data,
+  method = "class"
+)
+
+rpart.plot(tree_model)
+
+tree_model$variable.importance
+
+```
+
+## Summary
+
+- Confusion Matrix for all models must be provided and compared with each other   
+
+
